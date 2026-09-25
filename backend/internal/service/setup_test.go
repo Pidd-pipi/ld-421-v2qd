@@ -17,6 +17,7 @@ type testEnv struct {
 	db                 *gorm.DB
 	equipmentService   *EquipmentService
 	borrowService      *BorrowService
+	maintenanceService *MaintenanceService
 	reservationService *ReservationService
 	categoryService    *CategoryService
 	equipmentRepo      repository.EquipmentRepository
@@ -39,12 +40,14 @@ func newTestEnv(t *testing.T) *testEnv {
 	userRepo := repository.NewUserRepository(db)
 	equipmentRepo := repository.NewEquipmentRepository(db)
 	borrowRepo := repository.NewBorrowRepository(db)
+	maintenanceRepo := repository.NewMaintenanceRepository(db)
 	reservationRepo := repository.NewReservationRepository(db)
 	auditRepo := repository.NewAuditLogRepository(db)
 
 	auditService := NewAuditService(auditRepo, logger)
 	equipmentService := NewEquipmentService(equipmentRepo, categoryRepo, userRepo, auditService, logger)
-	borrowService := NewBorrowService(borrowRepo, equipmentRepo, auditService, logger)
+	borrowService := NewBorrowService(borrowRepo, equipmentRepo, maintenanceRepo, auditService, logger)
+	maintenanceService := NewMaintenanceService(maintenanceRepo, equipmentRepo, auditService, logger)
 	reservationService := NewReservationService(reservationRepo, equipmentRepo, auditService, logger)
 	categoryService := NewCategoryService(categoryRepo, logger)
 
@@ -69,6 +72,7 @@ func newTestEnv(t *testing.T) *testEnv {
 		db:                 db,
 		equipmentService:   equipmentService,
 		borrowService:      borrowService,
+		maintenanceService: maintenanceService,
 		reservationService: reservationService,
 		categoryService:    categoryService,
 		equipmentRepo:      equipmentRepo,

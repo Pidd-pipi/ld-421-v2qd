@@ -115,6 +115,7 @@ func (c ReturnCondition) Valid() bool {
 type MaintenanceResult string
 
 const (
+	MaintenanceResultPending       MaintenanceResult = "Pending"
 	MaintenanceResultPass          MaintenanceResult = "Pass"
 	MaintenanceResultFail          MaintenanceResult = "Fail"
 	MaintenanceResultNeedsFollowUp MaintenanceResult = "NeedsFollowUp"
@@ -122,10 +123,16 @@ const (
 
 func AllMaintenanceResult() []MaintenanceResult {
 	return []MaintenanceResult{
+		MaintenanceResultPending,
 		MaintenanceResultPass,
 		MaintenanceResultFail,
 		MaintenanceResultNeedsFollowUp,
 	}
+}
+
+// IsFinal 判断是否为执行维护后登记的最终结果。
+func (r MaintenanceResult) IsFinal() bool {
+	return r == MaintenanceResultPass || r == MaintenanceResultFail || r == MaintenanceResultNeedsFollowUp
 }
 
 func (r MaintenanceResult) Valid() bool {

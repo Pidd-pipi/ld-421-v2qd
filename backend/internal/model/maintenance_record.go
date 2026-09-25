@@ -16,7 +16,7 @@ type MaintenanceRecord struct {
 	NextMaintenanceDate *time.Time                  `json:"nextMaintenanceDate"`
 	Cost                float64                     `gorm:"type:decimal(12,2)" json:"cost"`
 	MaintainerID        uint                        `gorm:"index;not null" json:"maintainerId"`
-	Result              constants.MaintenanceResult `gorm:"size:32;not null;default:Pass" json:"result"`
+	Result              constants.MaintenanceResult `gorm:"size:32;not null;default:Pending" json:"result"`
 	Equipment           *Equipment                  `gorm:"foreignKey:EquipmentID" json:"equipment,omitempty"`
 	Maintainer          *User                       `gorm:"foreignKey:MaintainerID" json:"maintainer,omitempty"`
 }

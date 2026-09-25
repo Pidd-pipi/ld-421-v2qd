@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Button, Card, Form, Input, Modal, Select, Space, Table, Tabs, message } from 'antd'
+import { Alert, Button, Card, Form, Input, Modal, Select, Space, Table, Tabs, message } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { PlusOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
@@ -9,6 +9,7 @@ import { useBorrowFlow } from '../hooks/useBorrowFlow'
 import { StatusBadge } from '../components/common/StatusBadge'
 import { StepIndicator } from '../components/common/StepIndicator'
 import { usePagination } from '../hooks/usePagination'
+import { assetStatusText, isBorrowable, unavailableHint } from '../utils/equipmentStatus'
 import type { BorrowRecord, CreateBorrowPayload, Equipment } from '../types'
 import { useAuthStore } from '../stores/authStore'
 
@@ -21,6 +22,7 @@ export function BorrowManage() {
   const [loading, setLoading] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [form] = Form.useForm<CreateBorrowPayload>()
+  const selectedEquipmentId = Form.useWatch('equipmentId', form) as number | undefined
   const pagination = usePagination()
   const user = useAuthStore((state) => state.user)
   const flow = useBorrowFlow()
@@ -46,8 +48,14 @@ export function BorrowManage() {
   }, [load])
 
   useEffect(() => {
-    fetchEquipment({ page: 1, page_size: 100 }).then((res) => setEquipment(res.list))
+    loadEquipment()
   }, [])
+
+  const loadEquipment = () => {
+    fetchEquipment({ page: 1, page_size: 100 }).then((res) => setEquipment(res.list))
+  }
+
+  const selectedEquipment = equipment.find((item) => item.id === selectedEquipmentId)
 
   const submit = async () => {
     const values = await form.validateFields()
@@ -59,19 +67,23 @@ export function BorrowManage() {
     })
     message.success('借用申请已提交')
     setModalOpen(false)
+    form.resetFields()
     load()
+    loadEquipment()
   }
 
   const approve = async (id: number) => {
     await flow.approve(id)
     message.success('已审批通过')
     load()
+    loadEquipment()
   }
 
   const reject = async (id: number) => {
     await flow.reject(id)
     message.success('已驳回')
     load()
+    loadEquipment()
   }
 
   const confirmReturn = (id: number) => {
@@ -95,8 +107,15 @@ export function BorrowManage() {
           actualReturnDate: dayjs().format('YYYY-MM-DD'),
           returnCondition: condition
         })
-        message.success('归还已确认')
+        message.success(
+          condition === 'Good'
+            ? '归还已确认，设备恢复可借'
+            : condition === 'Damaged'
+              ? '归还已确认，设备已转入维护'
+              : '归还已确认，设备已标记丢失'
+        )
         load()
+        loadEquipment()
       }
     })
   }
@@ -180,16 +199,36 @@ export function BorrowManage() {
         }}
       />
 
-      <Modal title="提交借用申请" open={modalOpen} onCancel={() => setModalOpen(false)} onOk={submit}>
+      <Modal
+        title="提交借用申请"
+        open={modalOpen}
+        onCancel={() => {
+          setModalOpen(false)
+          form.resetFields()
+        }}
+        onOk={submit}
+      >
         <Form form={form} layout="vertical">
-          <Form.Item name="equipmentId" label="选择设备" rules={[{ required: true }]}>
+          <Form.Item name="equipmentId" label="选择设备" rules={[{ required: true, message: '请选择设备' }]}>
             <Select
-              placeholder="选择可用设备"
-              options={equipment
-                .filter((item) => item.status === 'Available')
-                .map((item) => ({ label: `${item.name}（${item.code}）`, value: item.id }))}
+              placeholder="选择设备"
+              showSearch
+              optionFilterProp="label"
+              options={equipment.map((item) => ({
+                label: `${item.name}（${item.code}）· ${assetStatusText(item.status)}`,
+                value: item.id,
+                disabled: !isBorrowable(item.status)
+              }))}
             />
           </Form.Item>
+          {selectedEquipment && !isBorrowable(selectedEquipment.status) ? (
+            <Alert
+              style={{ marginBottom: 16, marginTop: -8 }}
+              type="warning"
+              showIcon
+              message={unavailableHint(selectedEquipment.status)}
+            />
+          ) : null}
           <Form.Item name="borrowDate" label="借用日期" rules={[{ required: true }]}>
             <Input placeholder="YYYY-MM-DD" />
           </Form.Item>

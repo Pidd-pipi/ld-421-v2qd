@@ -17,6 +17,8 @@ type MaintenanceRepository interface {
 	FindByID(ctx context.Context, id uint) (*model.MaintenanceRecord, error)
 	List(ctx context.Context, filter MaintenanceFilter) ([]model.MaintenanceRecord, int64, error)
 	Stats(ctx context.Context) (*MaintenanceStats, error)
+	// CountPending 统计指定设备除某条记录外仍待执行的维护记录数。
+	CountPending(ctx context.Context, equipmentID, excludeID uint) (int64, error)
 }
 
 // MaintenanceFilter 维护记录筛选条件。
@@ -82,6 +84,19 @@ func (r *maintenanceRepository) List(ctx context.Context, filter MaintenanceFilt
 		return nil, 0, fmt.Errorf("list maintenance records: %w", err)
 	}
 	return list, total, nil
+}
+
+func (r *maintenanceRepository) CountPending(ctx context.Context, equipmentID, excludeID uint) (int64, error) {
+	var count int64
+	query := r.db.WithContext(ctx).Model(&model.MaintenanceRecord{}).
+		Where("equipment_id = ? AND result = ?", equipmentID, constants.MaintenanceResultPending)
+	if excludeID > 0 {
+		query = query.Where("id <> ?", excludeID)
+	}
+	if err := query.Count(&count).Error; err != nil {
+		return 0, fmt.Errorf("count pending maintenance: %w", err)
+	}
+	return count, nil
 }
 
 func (r *maintenanceRepository) Stats(ctx context.Context) (*MaintenanceStats, error) {

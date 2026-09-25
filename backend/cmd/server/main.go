@@ -99,7 +99,7 @@ func run(cfg *config.Config, log *slog.Logger) error {
 	userService := service.NewUserService(userRepo, log)
 	categoryService := service.NewCategoryService(categoryRepo, log)
 	equipmentService := service.NewEquipmentService(equipmentRepo, categoryRepo, userRepo, auditService, log)
-	borrowService := service.NewBorrowService(borrowRepo, equipmentRepo, auditService, log)
+	borrowService := service.NewBorrowService(borrowRepo, equipmentRepo, maintenanceRepo, auditService, log)
 	maintenanceService := service.NewMaintenanceService(maintenanceRepo, equipmentRepo, auditService, log)
 	reservationService := service.NewReservationService(reservationRepo, equipmentRepo, auditService, log)
 	dashboardService := service.NewDashboardService(equipmentRepo, borrowRepo, reservationRepo, log)

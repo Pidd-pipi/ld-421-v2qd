@@ -32,6 +32,7 @@ export const ReturnCondition = {
 export type ReturnCondition = (typeof ReturnCondition)[keyof typeof ReturnCondition]
 
 export const MaintenanceResult = {
+  Pending: 'Pending',
   Pass: 'Pass',
   Fail: 'Fail',
   NeedsFollowUp: 'NeedsFollowUp'

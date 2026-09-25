@@ -400,7 +400,7 @@ export function EquipmentManage() {
               columns={[
                 { title: '类型', dataIndex: 'type', width: 110 },
                 { title: '内容', dataIndex: 'content' },
-                { title: '结果', dataIndex: 'result', render: (v: string) => <StatusBadge status={v} /> }
+                { title: '结果', dataIndex: 'result', render: (v: string) => <StatusBadge status={v} pendingText="待执行" /> }
               ]}
             />
           </>

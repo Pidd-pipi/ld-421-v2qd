@@ -1,16 +1,8 @@
 import { Tag } from 'antd'
-
-interface StatusBadgeProps {
-  status: string
-  labelMap?: Record<string, { color: string; text?: string }>
-}
+import { ASSET_STATUS_META } from '../../utils/equipmentStatus'
 
 const defaultMap: Record<string, { color: string; text?: string }> = {
-  Available: { color: 'green', text: '可用' },
-  InUse: { color: 'blue', text: '使用中' },
-  Maintenance: { color: 'orange', text: '维护中' },
-  Retired: { color: 'default', text: '已报废' },
-  Lost: { color: 'red', text: '已丢失' },
+  ...ASSET_STATUS_META,
   Pending: { color: 'gold', text: '待审批' },
   Approved: { color: 'green', text: '已通过' },
   Rejected: { color: 'red', text: '已驳回' },
@@ -28,8 +20,18 @@ const defaultMap: Record<string, { color: string; text?: string }> = {
   Damaged: { color: 'orange', text: '损坏' }
 }
 
-export function StatusBadge({ status, labelMap }: StatusBadgeProps) {
-  const meta = (labelMap && labelMap[status]) || defaultMap[status] || { color: 'default' }
+interface StatusBadgeProps {
+  status: string
+  labelMap?: Record<string, { color: string; text?: string }>
+  // 维护记录的“待审批”含义为“待执行”，借用/预约仍为“待审批”。
+  pendingText?: string
+}
+
+export function StatusBadge({ status, labelMap, pendingText }: StatusBadgeProps) {
+  let meta = (labelMap && labelMap[status]) || defaultMap[status] || { color: 'default' }
+  if (status === 'Pending' && pendingText) {
+    meta = { ...meta, text: pendingText }
+  }
   return <Tag color={meta.color}>{meta.text || status}</Tag>
 }
 

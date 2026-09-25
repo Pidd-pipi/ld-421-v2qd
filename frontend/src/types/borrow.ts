@@ -3,6 +3,7 @@ export interface BorrowRecord {
   equipmentId: number
   equipmentName?: string
   equipmentCode?: string
+  equipmentStatus?: string
   borrowerId: number
   borrowerName?: string
   borrowDate: string

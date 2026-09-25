@@ -2,6 +2,7 @@ export interface MaintenanceRecord {
   id: number
   equipmentId: number
   equipmentName?: string
+  equipmentStatus?: string
   type: string
   content: string
   maintenanceDate: string

@@ -22,6 +22,7 @@ type BorrowResponse struct {
 	EquipmentID        uint       `json:"equipmentId"`
 	EquipmentName      string     `json:"equipmentName,omitempty"`
 	EquipmentCode      string     `json:"equipmentCode,omitempty"`
+	EquipmentStatus    string     `json:"equipmentStatus,omitempty"`
 	BorrowerID         uint       `json:"borrowerId"`
 	BorrowerName       string     `json:"borrowerName,omitempty"`
 	BorrowDate         time.Time  `json:"borrowDate"`

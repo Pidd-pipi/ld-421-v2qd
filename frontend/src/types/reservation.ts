@@ -2,6 +2,7 @@ export interface Reservation {
   id: number
   equipmentId: number
   equipmentName?: string
+  equipmentStatus?: string
   userId: number
   userName?: string
   startTime: string

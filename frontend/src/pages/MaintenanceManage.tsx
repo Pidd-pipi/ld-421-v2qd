@@ -9,6 +9,7 @@ import { fetchUsers } from '../api/auth'
 import { StatusBadge } from '../components/common/StatusBadge'
 import { StatCard } from '../components/common/StatCard'
 import { CalendarCell } from '../components/common/CalendarCell'
+import { EquipmentSelect } from '../components/common/EquipmentSelect'
 import { formatCurrency } from '../utils/formatCurrency'
 import { usePagination } from '../hooks/usePagination'
 import { useAuthStore } from '../stores/authStore'
@@ -69,8 +70,10 @@ export function MaintenanceManage() {
       cost: values.cost ?? 0,
       maintainerId: values.maintainerId
     })
-    message.success('维护记录已创建')
+    message.success('维护记录已创建，设备转入维护中')
     setModalOpen(false)
+    form.resetFields()
+    fetchEquipment({ page: 1, page_size: 100 }).then((res) => setEquipment(res.list))
     load()
   }
 
@@ -84,15 +87,16 @@ export function MaintenanceManage() {
           defaultValue="Pass"
           onChange={(value) => (result = value)}
           options={[
-            { label: '通过', value: 'Pass' },
-            { label: '失败', value: 'Fail' },
-            { label: '需跟进', value: 'NeedsFollowUp' }
+            { label: '通过（恢复可借）', value: 'Pass' },
+            { label: '失败（继续维护）', value: 'Fail' },
+            { label: '需跟进（继续维护）', value: 'NeedsFollowUp' }
           ]}
         />
       ),
       onOk: async () => {
         await executeMaintenance(id, result)
-        message.success('维护结果已记录')
+        message.success(result === 'Pass' ? '维护通过，设备已恢复可借' : '维护结果已记录，设备继续维护')
+        fetchEquipment({ page: 1, page_size: 100 }).then((res) => setEquipment(res.list))
         load()
       }
     })
@@ -100,6 +104,12 @@ export function MaintenanceManage() {
 
   const columns: ColumnsType<MaintenanceRecord> = [
     { title: '设备', dataIndex: 'equipmentName', width: 150 },
+    {
+      title: '设备状态',
+      dataIndex: 'equipmentStatus',
+      width: 100,
+      render: (v?: string) => (v ? <StatusBadge status={v} /> : '—')
+    },
     { title: '类型', dataIndex: 'type', width: 120, render: (v: string) => <StatusBadge status={v} /> },
     { title: '维护内容', dataIndex: 'content', ellipsis: true },
     { title: '维护日期', dataIndex: 'maintenanceDate', width: 110, render: (v: string) => v?.slice(0, 10) },
@@ -138,7 +148,14 @@ export function MaintenanceManage() {
         style={{ marginTop: 16 }}
         extra={
           canWrite(user?.roleCode) ? (
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => {
+                form.resetFields()
+                setModalOpen(true)
+              }}
+            >
               创建维护记录
             </Button>
           ) : null
@@ -181,10 +198,10 @@ export function MaintenanceManage() {
 
       <Modal title="创建维护记录" open={modalOpen} onCancel={() => setModalOpen(false)} onOk={submit}>
         <Form form={form} layout="vertical">
-          <Form.Item name="equipmentId" label="设备" rules={[{ required: true }]}>
-            <Select
-              placeholder="选择设备"
-              options={equipment.map((item) => ({ label: `${item.name}（${item.code}）`, value: item.id }))}
+          <Form.Item name="equipmentId" label="设备" rules={[{ required: true, message: '请选择设备' }]}>
+            <EquipmentSelect
+              equipment={equipment}
+              selectable={(item) => item.status !== 'Lost' && item.status !== 'Retired'}
             />
           </Form.Item>
           <Form.Item name="type" label="维护类型" rules={[{ required: true }]}>

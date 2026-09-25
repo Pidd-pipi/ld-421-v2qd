@@ -58,9 +58,11 @@ func mapEquipment(equipment model.Equipment) dto.EquipmentResponse {
 func mapBorrow(record model.BorrowRecord) dto.BorrowResponse {
 	equipmentName := ""
 	equipmentCode := ""
+	equipmentStatus := ""
 	if record.Equipment != nil {
 		equipmentName = record.Equipment.Name
 		equipmentCode = record.Equipment.Code
+		equipmentStatus = string(record.Equipment.Status)
 	}
 	borrowerName := ""
 	if record.Borrower != nil {
@@ -80,6 +82,7 @@ func mapBorrow(record model.BorrowRecord) dto.BorrowResponse {
 		EquipmentID:        record.EquipmentID,
 		EquipmentName:      equipmentName,
 		EquipmentCode:      equipmentCode,
+		EquipmentStatus:    equipmentStatus,
 		BorrowerID:         record.BorrowerID,
 		BorrowerName:       borrowerName,
 		BorrowDate:         record.BorrowDate,
@@ -96,8 +99,10 @@ func mapBorrow(record model.BorrowRecord) dto.BorrowResponse {
 
 func mapMaintenance(record model.MaintenanceRecord) dto.MaintenanceResponse {
 	equipmentName := ""
+	equipmentStatus := ""
 	if record.Equipment != nil {
 		equipmentName = record.Equipment.Name
+		equipmentStatus = string(record.Equipment.Status)
 	}
 	maintainerName := ""
 	if record.Maintainer != nil {
@@ -107,6 +112,7 @@ func mapMaintenance(record model.MaintenanceRecord) dto.MaintenanceResponse {
 		ID:                  record.ID,
 		EquipmentID:         record.EquipmentID,
 		EquipmentName:       equipmentName,
+		EquipmentStatus:     equipmentStatus,
 		Type:                string(record.Type),
 		Content:             record.Content,
 		MaintenanceDate:     record.MaintenanceDate,
@@ -121,8 +127,10 @@ func mapMaintenance(record model.MaintenanceRecord) dto.MaintenanceResponse {
 
 func mapReservation(reservation model.Reservation) dto.ReservationResponse {
 	equipmentName := ""
+	equipmentStatus := ""
 	if reservation.Equipment != nil {
 		equipmentName = reservation.Equipment.Name
+		equipmentStatus = string(reservation.Equipment.Status)
 	}
 	userName := ""
 	if reservation.User != nil {
@@ -133,18 +141,19 @@ func mapReservation(reservation model.Reservation) dto.ReservationResponse {
 		approverName = reservation.Approver.Name
 	}
 	return dto.ReservationResponse{
-		ID:            reservation.ID,
-		EquipmentID:   reservation.EquipmentID,
-		EquipmentName: equipmentName,
-		UserID:        reservation.UserID,
-		UserName:      userName,
-		StartTime:     reservation.StartTime,
-		EndTime:       reservation.EndTime,
-		Purpose:       reservation.Purpose,
-		Status:        string(reservation.Status),
-		ApproverID:    reservation.ApproverID,
-		ApproverName:  approverName,
-		CreatedAt:     reservation.CreatedAt,
+		ID:              reservation.ID,
+		EquipmentID:     reservation.EquipmentID,
+		EquipmentName:   equipmentName,
+		EquipmentStatus: equipmentStatus,
+		UserID:          reservation.UserID,
+		UserName:        userName,
+		StartTime:       reservation.StartTime,
+		EndTime:         reservation.EndTime,
+		Purpose:         reservation.Purpose,
+		Status:          string(reservation.Status),
+		ApproverID:      reservation.ApproverID,
+		ApproverName:    approverName,
+		CreatedAt:       reservation.CreatedAt,
 	}
 }
 

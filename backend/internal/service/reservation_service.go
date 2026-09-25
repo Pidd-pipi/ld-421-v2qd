@@ -35,11 +35,15 @@ func (s *ReservationService) Create(ctx context.Context, reservation *model.Rese
 	if !reservation.EndTime.After(reservation.StartTime) {
 		return nil, apperrors.NewBusinessError(40000, 400, "结束时间必须晚于开始时间")
 	}
-	if _, err := s.equipmentRepo.FindByID(ctx, reservation.EquipmentID); err != nil {
+	equipment, err := s.equipmentRepo.FindByID(ctx, reservation.EquipmentID)
+	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return nil, apperrors.NewBusinessError(40400, 404, "设备不存在")
 		}
 		return nil, fmt.Errorf("find equipment: %w", err)
+	}
+	if equipment.Status != constants.AssetStatusAvailable {
+		return nil, apperrors.NewBusinessError(40900, 409, unavailableMessage(equipment.Status))
 	}
 	conflict, err := s.repo.HasConflict(ctx, reservation.EquipmentID, reservation.StartTime, reservation.EndTime, 0)
 	if err != nil {
@@ -67,6 +71,16 @@ func (s *ReservationService) Approve(ctx context.Context, id uint, actor Actor) 
 	}
 	if reservation.Status != constants.ReservationStatusPending {
 		return apperrors.NewBusinessError(40900, 409, "仅待审批预约可审批")
+	}
+	equipment, err := s.equipmentRepo.FindByID(ctx, reservation.EquipmentID)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return apperrors.NewBusinessError(40400, 404, "设备不存在")
+		}
+		return fmt.Errorf("find equipment: %w", err)
+	}
+	if reservationApproveBlocked(equipment.Status) {
+		return apperrors.NewBusinessError(40900, 409, unavailableMessage(equipment.Status))
 	}
 	approverID := actor.UserID
 	reservation.Status = constants.ReservationStatusApproved

@@ -12,16 +12,17 @@ type CreateReservationRequest struct {
 
 // ReservationResponse 预约记录返回。
 type ReservationResponse struct {
-	ID            uint      `json:"id"`
-	EquipmentID   uint      `json:"equipmentId"`
-	EquipmentName string    `json:"equipmentName,omitempty"`
-	UserID        uint      `json:"userId"`
-	UserName      string    `json:"userName,omitempty"`
-	StartTime     time.Time `json:"startTime"`
-	EndTime       time.Time `json:"endTime"`
-	Purpose       string    `json:"purpose"`
-	Status        string    `json:"status"`
-	ApproverID    *uint     `json:"approverId"`
-	ApproverName  string    `json:"approverName,omitempty"`
-	CreatedAt     time.Time `json:"createdAt"`
+	ID              uint      `json:"id"`
+	EquipmentID     uint      `json:"equipmentId"`
+	EquipmentName   string    `json:"equipmentName,omitempty"`
+	EquipmentStatus string    `json:"equipmentStatus,omitempty"`
+	UserID          uint      `json:"userId"`
+	UserName        string    `json:"userName,omitempty"`
+	StartTime       time.Time `json:"startTime"`
+	EndTime         time.Time `json:"endTime"`
+	Purpose         string    `json:"purpose"`
+	Status          string    `json:"status"`
+	ApproverID      *uint     `json:"approverId"`
+	ApproverName    string    `json:"approverName,omitempty"`
+	CreatedAt       time.Time `json:"createdAt"`
 }

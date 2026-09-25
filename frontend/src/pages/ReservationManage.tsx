@@ -7,8 +7,11 @@ import { approveReservation, cancelReservation, createReservation, fetchReservat
 import { fetchEquipment } from '../api/equipment'
 import { StatusBadge } from '../components/common/StatusBadge'
 import { CalendarCell } from '../components/common/CalendarCell'
+import { AlertBanner } from '../components/common/AlertBanner'
+import { EquipmentSelect } from '../components/common/EquipmentSelect'
 import { usePagination } from '../hooks/usePagination'
 import { useAuthStore } from '../stores/authStore'
+import { isEquipmentAvailable, unavailableReason } from '../utils/equipmentStatus'
 import type { CreateReservationPayload, Equipment, Reservation } from '../types'
 
 const canApprove = (role?: string) => role === 'Admin' || role === 'LabManager'
@@ -22,6 +25,8 @@ export function ReservationManage() {
   const [loading, setLoading] = useState(false)
   const pagination = usePagination()
   const user = useAuthStore((state) => state.user)
+  const pickedEquipmentId = Form.useWatch('equipmentId', form)
+  const pickedEquipment = equipment.find((item) => item.id === pickedEquipmentId)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -53,6 +58,11 @@ export function ReservationManage() {
 
   const submit = async () => {
     const values = await form.validateFields()
+    const selected = equipment.find((item) => item.id === values.equipmentId)
+    if (selected && !isEquipmentAvailable(selected.status)) {
+      message.warning('所选设备当前不可预约，请选择“可借”状态的设备')
+      return
+    }
     await createReservation({
       equipmentId: values.equipmentId,
       startTime: dayjs(values.startTime).format('YYYY-MM-DD HH:mm'),
@@ -61,11 +71,19 @@ export function ReservationManage() {
     })
     message.success('预约已创建')
     setModalOpen(false)
+    form.resetFields()
+    fetchEquipment({ page: 1, page_size: 100 }).then((res) => setEquipment(res.list))
     load()
   }
 
   const columns: ColumnsType<Reservation> = [
     { title: '设备', dataIndex: 'equipmentName', width: 150 },
+    {
+      title: '设备状态',
+      dataIndex: 'equipmentStatus',
+      width: 100,
+      render: (v?: string) => (v ? <StatusBadge status={v} /> : '—')
+    },
     { title: '预约人', dataIndex: 'userName', width: 100 },
     { title: '开始时间', dataIndex: 'startTime', width: 160, render: (v: string) => dayjs(v).format('YYYY-MM-DD HH:mm') },
     { title: '结束时间', dataIndex: 'endTime', width: 160, render: (v: string) => dayjs(v).format('YYYY-MM-DD HH:mm') },
@@ -125,7 +143,14 @@ export function ReservationManage() {
     <Card
       title="预约管理"
       extra={
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={() => {
+            form.resetFields()
+            setModalOpen(true)
+          }}
+        >
           创建预约
         </Button>
       }
@@ -181,13 +206,21 @@ export function ReservationManage() {
 
       <Modal title="创建预约" open={modalOpen} onCancel={() => setModalOpen(false)} onOk={submit}>
         <Form form={form} layout="vertical">
-          <Form.Item name="equipmentId" label="设备" rules={[{ required: true }]}>
-            <Select
-              placeholder="选择设备"
-              options={equipment.map((item) => ({ label: `${item.name}（${item.code}）`, value: item.id }))}
-            />
+          <Form.Item name="equipmentId" label="设备" rules={[{ required: true, message: '请选择设备' }]}>
+            <EquipmentSelect equipment={equipment} />
           </Form.Item>
-          <Form.Item name="startTime" label="开始时间" rules={[{ required: true }]}>
+          {pickedEquipment ? (
+            isEquipmentAvailable(pickedEquipment.status) ? (
+              <AlertBanner
+                type="success"
+                message="设备可预约"
+                description={`${pickedEquipment.name}（${pickedEquipment.code}）当前为可借状态，可提交预约。`}
+              />
+            ) : (
+              <AlertBanner type="error" message="设备不可预约" description={unavailableReason(pickedEquipment.status)} />
+            )
+          ) : null}
+          <Form.Item name="startTime" label="开始时间" rules={[{ required: true }]} style={{ marginTop: 12 }}>
             <Input placeholder="YYYY-MM-DD HH:mm" />
           </Form.Item>
           <Form.Item name="endTime" label="结束时间" rules={[{ required: true }]}>

@@ -23,6 +23,7 @@ type MaintenanceResponse struct {
 	ID                  uint       `json:"id"`
 	EquipmentID         uint       `json:"equipmentId"`
 	EquipmentName       string     `json:"equipmentName,omitempty"`
+	EquipmentStatus     string     `json:"equipmentStatus,omitempty"`
 	Type                string     `json:"type"`
 	Content             string     `json:"content"`
 	MaintenanceDate     time.Time  `json:"maintenanceDate"`

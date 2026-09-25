@@ -15,20 +15,28 @@ import (
 
 // BorrowService 借用记录业务服务。
 type BorrowService struct {
-	repo          repository.BorrowRepository
-	equipmentRepo repository.EquipmentRepository
-	audit         *AuditService
-	logger        *slog.Logger
+	repo            repository.BorrowRepository
+	equipmentRepo   repository.EquipmentRepository
+	maintenanceRepo repository.MaintenanceRepository
+	audit           *AuditService
+	logger          *slog.Logger
 }
 
 // NewBorrowService 构造借用服务。
 func NewBorrowService(
 	repo repository.BorrowRepository,
 	equipmentRepo repository.EquipmentRepository,
+	maintenanceRepo repository.MaintenanceRepository,
 	audit *AuditService,
 	logger *slog.Logger,
 ) *BorrowService {
-	return &BorrowService{repo: repo, equipmentRepo: equipmentRepo, audit: audit, logger: logger}
+	return &BorrowService{
+		repo:            repo,
+		equipmentRepo:   equipmentRepo,
+		maintenanceRepo: maintenanceRepo,
+		audit:           audit,
+		logger:          logger,
+	}
 }
 
 // Create 提交借用申请。
@@ -41,7 +49,7 @@ func (s *BorrowService) Create(ctx context.Context, record *model.BorrowRecord, 
 		return nil, fmt.Errorf("find equipment: %w", err)
 	}
 	if equipment.Status != constants.AssetStatusAvailable {
-		return nil, apperrors.NewBusinessError(40900, 409, "设备当前不可借用")
+		return nil, apperrors.NewBusinessError(40900, 409, unavailableMessage(equipment.Status))
 	}
 	if record.ExpectedReturnDate.Before(record.BorrowDate) {
 		return nil, apperrors.NewBusinessError(40000, 400, "预计归还日期不能早于借用日期")
@@ -130,16 +138,40 @@ func (s *BorrowService) Return(ctx context.Context, id uint, actualReturnDate ti
 	}
 	equipment, err := s.equipmentRepo.FindByID(ctx, record.EquipmentID)
 	if err == nil {
-		if condition == constants.ReturnConditionLost {
-			equipment.Status = constants.AssetStatusLost
-		} else {
+		switch condition {
+		case constants.ReturnConditionGood:
+			// 良好归还：恢复可借。
 			equipment.Status = constants.AssetStatusAvailable
-		}
-		if err := s.equipmentRepo.Update(ctx, equipment); err != nil {
-			return fmt.Errorf("mark equipment available: %w", err)
+			if err := s.equipmentRepo.Update(ctx, equipment); err != nil {
+				return fmt.Errorf("mark equipment available: %w", err)
+			}
+		case constants.ReturnConditionDamaged:
+			// 损坏归还：转入维护，并生成一条纠正性维护记录，待维护结果决定后续能否出借。
+			equipment.Status = constants.AssetStatusMaintenance
+			if err := s.equipmentRepo.Update(ctx, equipment); err != nil {
+				return fmt.Errorf("mark equipment maintenance: %w", err)
+			}
+			maintenanceRecord := &model.MaintenanceRecord{
+				EquipmentID:     record.EquipmentID,
+				Type:            constants.MaintenanceTypeCorrective,
+				Content:         fmt.Sprintf("借用归还（记录 %d）时登记为损坏，转入维护", record.ID),
+				MaintenanceDate: actualReturnDate,
+				Cost:            0,
+				MaintainerID:    actor.UserID,
+				Result:          constants.MaintenanceResultNeedsFollowUp,
+			}
+			if err := s.maintenanceRepo.Create(ctx, maintenanceRecord); err != nil {
+				return fmt.Errorf("create corrective maintenance: %w", err)
+			}
+		case constants.ReturnConditionLost:
+			// 丢失归还：标记丢失。
+			equipment.Status = constants.AssetStatusLost
+			if err := s.equipmentRepo.Update(ctx, equipment); err != nil {
+				return fmt.Errorf("mark equipment lost: %w", err)
+			}
 		}
 	}
-	if err := s.audit.Log(ctx, actor, "borrow.return", "borrow", id, fmt.Sprintf("确认归还借用记录 %d", id)); err != nil {
+	if err := s.audit.Log(ctx, actor, "borrow.return", "borrow", id, fmt.Sprintf("确认归还借用记录 %d，归还状况 %s", id, condition)); err != nil {
 		return err
 	}
 	return nil

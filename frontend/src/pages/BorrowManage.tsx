@@ -8,7 +8,10 @@ import { fetchEquipment } from '../api/equipment'
 import { useBorrowFlow } from '../hooks/useBorrowFlow'
 import { StatusBadge } from '../components/common/StatusBadge'
 import { StepIndicator } from '../components/common/StepIndicator'
+import { AlertBanner } from '../components/common/AlertBanner'
+import { EquipmentSelect } from '../components/common/EquipmentSelect'
 import { usePagination } from '../hooks/usePagination'
+import { isEquipmentAvailable, unavailableReason } from '../utils/equipmentStatus'
 import type { BorrowRecord, CreateBorrowPayload, Equipment } from '../types'
 import { useAuthStore } from '../stores/authStore'
 
@@ -24,6 +27,8 @@ export function BorrowManage() {
   const pagination = usePagination()
   const user = useAuthStore((state) => state.user)
   const flow = useBorrowFlow()
+  const selectedEquipmentId = Form.useWatch('equipmentId', form)
+  const selectedEquipment = equipment.find((item) => item.id === selectedEquipmentId)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -51,6 +56,11 @@ export function BorrowManage() {
 
   const submit = async () => {
     const values = await form.validateFields()
+    const selected = equipment.find((item) => item.id === values.equipmentId)
+    if (selected && !isEquipmentAvailable(selected.status)) {
+      message.warning('所选设备当前不可借用，请选择“可借”状态的设备')
+      return
+    }
     await flow.submit({
       equipmentId: values.equipmentId,
       borrowDate: dayjs(values.borrowDate).format('YYYY-MM-DD'),
@@ -59,6 +69,8 @@ export function BorrowManage() {
     })
     message.success('借用申请已提交')
     setModalOpen(false)
+    form.resetFields()
+    fetchEquipment({ page: 1, page_size: 100 }).then((res) => setEquipment(res.list))
     load()
   }
 
@@ -103,6 +115,12 @@ export function BorrowManage() {
 
   const columns: ColumnsType<BorrowRecord> = [
     { title: '设备', dataIndex: 'equipmentName', width: 160 },
+    {
+      title: '设备状态',
+      dataIndex: 'equipmentStatus',
+      width: 100,
+      render: (v?: string) => (v ? <StatusBadge status={v} /> : '—')
+    },
     { title: '借用人', dataIndex: 'borrowerName', width: 100 },
     { title: '借用日期', dataIndex: 'borrowDate', width: 110, render: (v: string) => v?.slice(0, 10) },
     { title: '预计归还', dataIndex: 'expectedReturnDate', width: 110, render: (v: string) => v?.slice(0, 10) },
@@ -143,7 +161,14 @@ export function BorrowManage() {
     <Card
       title="借用管理"
       extra={
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={() => {
+            form.resetFields()
+            setModalOpen(true)
+          }}
+        >
           提交借用
         </Button>
       }
@@ -182,15 +207,21 @@ export function BorrowManage() {
 
       <Modal title="提交借用申请" open={modalOpen} onCancel={() => setModalOpen(false)} onOk={submit}>
         <Form form={form} layout="vertical">
-          <Form.Item name="equipmentId" label="选择设备" rules={[{ required: true }]}>
-            <Select
-              placeholder="选择可用设备"
-              options={equipment
-                .filter((item) => item.status === 'Available')
-                .map((item) => ({ label: `${item.name}（${item.code}）`, value: item.id }))}
-            />
+          <Form.Item name="equipmentId" label="选择设备" rules={[{ required: true, message: '请选择设备' }]}>
+            <EquipmentSelect equipment={equipment} placeholder="选择可借设备" />
           </Form.Item>
-          <Form.Item name="borrowDate" label="借用日期" rules={[{ required: true }]}>
+          {selectedEquipment ? (
+            isEquipmentAvailable(selectedEquipment.status) ? (
+              <AlertBanner
+                type="success"
+                message="设备可借"
+                description={`${selectedEquipment.name}（${selectedEquipment.code}）当前为可借状态，可提交申请。`}
+              />
+            ) : (
+              <AlertBanner type="error" message="设备不可借用" description={unavailableReason(selectedEquipment.status)} />
+            )
+          ) : null}
+          <Form.Item name="borrowDate" label="借用日期" rules={[{ required: true }]} style={{ marginTop: 12 }}>
             <Input placeholder="YYYY-MM-DD" />
           </Form.Item>
           <Form.Item name="expectedReturnDate" label="预计归还日期" rules={[{ required: true }]}>
